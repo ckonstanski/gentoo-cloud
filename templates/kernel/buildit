@@ -1,0 +1,54 @@
+#!/bin/bash
+
+KERNEL_VERSION=$1
+
+if [ "${KERNEL_VERSION}" = "" ]
+then
+    echo "No kernel version given; aborting."
+    exit 1
+fi
+
+echo "entering kernel src directory /usr/src/linux/"
+cd /usr/src/linux/
+
+echo "cleaning"
+cp .config hellboy
+make clean mrproper
+
+echo "removing modules directory at /lib/modules/${KERNEL_VERSION}"
+rm -rf /lib/modules/${KERNEL_VERSION}
+
+echo "configuring"
+cp hellboy .config
+make oldconfig
+cp .config hellboy
+
+echo "compiling"
+make -j2
+
+echo "installing modules"
+make modules_install
+
+echo "rebuilding packages with kernel modules"
+emerge -v @module-rebuild
+
+echo "reinstalling linux-firmware"
+emerge -v linux-firmware
+
+echo "copying files to /boot/"
+cp .config hellboy
+echo "copying .config to /boot/config-${KERNEL_VERSION}"
+cp .config /boot/config-${KERNEL_VERSION}
+cp .config /boot/config-ansible.latest
+echo "copying System.map to /boot/System.map-${KERNEL_VERSION}"
+cp System.map /boot/System.map-${KERNEL_VERSION}
+echo "copying arch/x86_64/boot/bzImage to /boot/vmlinuz-${KERNEL_VERSION}"
+cp arch/x86_64/boot/bzImage /boot/vmlinuz-${KERNEL_VERSION}
+
+#echo "Generating initramfs"
+genkernel --install initramfs
+
+echo "Updating GRUB"
+grub-mkconfig -o /boot/grub/grub.cfg
+
+exit 0

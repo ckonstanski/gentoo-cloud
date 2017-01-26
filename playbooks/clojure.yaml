@@ -1,0 +1,30 @@
+---
+- name: "Clojure configuration"
+  hosts: target
+  tasks:
+    - name: "Install java"
+      portage:
+        package={{ item }}
+        update=yes
+        changed_use=yes
+      with_items:
+        - dev-java/icedtea:8
+
+    - name: "Set icedtea-8 as system JVM"
+      shell: java-config -S icedtea-8
+
+    - name: "Purge icedtea-bin"
+      portage:
+        package={{ item }}
+        state=absent
+      with_items:
+        - dev-java/icedtea-bin
+
+    - name: "Install clojure"
+      portage:
+        package={{ item }}
+        update=yes
+        changed_use=yes
+      with_items:
+        - dev-lang/clojure
+        - dev-java/leiningen-bin

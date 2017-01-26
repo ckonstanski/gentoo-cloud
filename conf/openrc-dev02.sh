@@ -1,0 +1,7 @@
+export OS_AUTH_URL='http://dev02.os.cloud.twc.net:5000/v2.0'
+export OS_TENANT_ID='49aabc40694a4628931c90a7361bdb97'
+export OS_TENANT_NAME='admin'
+export OS_USERNAME='admin'
+export OS_PASSWORD='trefrubrecHUp6etaThes4U5'
+export OS_REGION_NAME='dev02'
+export DNS_SERVERS='8.8.8.8 8.8.4.4'

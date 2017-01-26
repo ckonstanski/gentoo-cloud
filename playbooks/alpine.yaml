@@ -1,0 +1,23 @@
+---
+- name: "Alpine configuration"
+  hosts: target
+  tasks:
+    - name: "Install alpine"
+      portage:
+        package={{ item }}
+        update=yes
+        changed_use=yes
+      with_items:
+        - mail-client/alpine
+
+    - name: "Install .pinerc"
+      copy:
+        src={{ item.src }}
+        dest={{ item.dest }}
+        mode=0644
+        owner={{ item.owner }}
+        group={{ item.group }}
+        force=no
+      with_items:
+        - { src: /root/.pinerc, dest: /root/.pinerc, owner: root, group: root }
+        - { src: /home/ckonstanski/.pinerc, dest: /home/ckonstanski/.pinerc, owner: ckonstanski, group: ckonstanski }

@@ -1,0 +1,316 @@
+---
+- name: "Portage configuration"
+  hosts: target
+  tasks:
+    - name: "Check for existence of portage tree"
+      stat: path=/usr/portage/metadata/timestamp.chk
+      register: timestamp_chk
+
+    - name: "Check whether the toolchain was already rebuilt"
+      stat: path=/usr/bin/gcj
+      register: gcj
+
+    - name: "Run emerge-webrsync"
+      shell: emerge-webrsync
+      when: timestamp_chk.stat.exists == False
+
+    - name: "Configure make.profile"
+      shell: eselect profile set default/linux/amd64/13.0
+      when: timestamp_chk.stat.exists == False
+
+    - name: "Configure portage preuse"
+      template:
+        src=../templates/portage/{{ item.src }}
+        dest=/etc/portage/{{ item.dest }}
+        mode=0644
+        owner=root
+        group=root
+        force=no
+      with_items:
+        - { src: make.conf.preuse.j2, dest: make.conf }
+        - { src: package_use_x86_64-pc-linux-gnu.preuse.j2, dest: package.use/x86_64-pc-linux-gnu }
+      when: gcj.stat.exists == False
+
+    - name: "Read the news"
+      shell: eselect news read all && eselect news purge
+
+    - name: "Archive emerge.log"
+      shell: cat /var/log/emerge.log | tee -a /var/log/emerge.log.1 ; echo > /var/log/emerge.log
+
+    - name: "Install app-portage/gentoolkit"
+      shell: emerge --update --changed-use --nodeps app-portage/gentoolkit
+      when: gcj.stat.exists == False
+
+    - name: "Install layman"
+      portage:
+        package="app-portage/layman"
+        update=yes
+        changed_use=yes
+      when: gcj.stat.exists == False
+
+    - name: "Recompile toolchain"
+      portage:
+        package={{ item }}
+        update=yes
+        changed_use=yes
+      with_items:
+        - sys-devel/gcc
+        - sys-kernel/linux-headers
+        - sys-libs/glibc
+        - sys-devel/binutils
+        - dev-libs/elfutils
+      when: gcj.stat.exists == False
+
+    - name: "Add nano to world set"
+      portage:
+        package="app-editors/nano"
+        noreplace=yes
+      when: gcj.stat.exists == False
+
+    - name: "Rebuild emptytree world"
+      shell: emerge -e @world
+      when: gcj.stat.exists == False
+
+    - name: "Configure layman: generate list"
+      shell: layman-updater -R ; layman -L
+      when: gcj.stat.exists == False
+
+    - name: "Configure layman: add overlays"
+      shell: for i in lisp tmacedo mysql dotnet emacs hossie; do layman -a $i; done
+      when: gcj.stat.exists == False
+
+    - name: "Configure portage"
+      template:
+        src=../templates/portage/{{ item.src }}
+        dest=/etc/portage/{{ item.dest }}
+        mode=0644
+        owner=root
+        group=root
+      with_items:
+        - { src: make.conf.j2, dest: make.conf }
+        - { src: package_keywords_x86_64-pc-linux-gnu.j2, dest: package.keywords/x86_64-pc-linux-gnu }
+        - { src: package_mask_x86_64-pc-linux-gnu.j2, dest: package.mask/x86_64-pc-linux-gnu }
+        - { src: package_use_x86_64-pc-linux-gnu.j2, dest: package.use/x86_64-pc-linux-gnu }
+
+    - name: "Create repos.conf"
+      file:
+        path=/etc/portage/repos.conf
+        state=directory
+        mode=0755
+        owner=root
+        group=root
+      when: gcj.stat.exists == False
+
+    - name: "Configure repos.conf"
+      template:
+        src=../templates/portage/{{ item.src }}
+        dest=/etc/portage/{{ item.dest }}
+        mode=0644
+        owner=root
+        group=root
+        force=no
+      with_items:
+        - { src: repos_conf_gentoo.conf.j2, dest: repos.conf/gentoo.conf }
+        - { src: repos_conf_layman.conf.j2, dest: repos.conf/layman.conf }
+      when: gcj.stat.exists == False
+
+    - name: "Delete portage files"
+      file:
+        path={{ item }}
+        state=absent
+      with_items:
+        - /etc/portage/make.conf.catalyst
+        - /etc/portage/package.keywords/cloud
+        - /etc/portage/package.keywords/openssh
+        - /etc/portage/package.mask/libtool
+        - /etc/portage/package.mask/openrc
+        - /etc/portage/package.mask/perl
+        - /etc/portage/package.use/grub
+        - /etc/portage/package.use/iputils
+
+    - name: "Update portage system utilties"
+      portage:
+        package={{ item }}
+        update=yes
+        changed_use=yes
+      with_items:
+        - sys-apps/portage
+        - app-portage/layman
+        - app-admin/perl-cleaner
+        - app-admin/python-updater
+
+    - name: "Discover whether portage was updated"
+      shell: if [ "$(grep -P 'Compiling/Merging.*sys-apps/portage-' /var/log/emerge.log)" == "" ]; then echo 1; else echo 0; fi
+      register: portage_updated
+ 
+    - name: "Rebuild metadata cache"
+      shell: emerge --metadata
+      when: portage_updated.stdout == "0"
+
+    - name: "Run perl-cleaner"
+      shell: perl-cleaner --all
+      when: gcj.stat.exists == False
+
+    - name: "Run python-updater"
+      shell: python-updater
+      when: gcj.stat.exists == False
+
+    - name: "Update packages that need a clean perl environment"
+      portage:
+        package={{ item }}
+        update=yes
+        changed_use=yes
+        oneshot=yes
+      with_items:
+        - dev-libs/libtasn1
+
+    - block:
+        - portage:
+            package=@world
+            update=yes
+            deep=yes
+            sync=yes
+            changed_use=yes
+      rescue:
+        - shell: USE="-systemd" emerge --update --changed-use sys-apps/util-linux
+        - portage:
+            package=@world
+            update=yes
+            deep=yes
+            sync=yes
+            changed_use=yes
+
+    - name: "Update kernel"
+      portage:
+        package="sys-kernel/gentoo-sources"
+        update=yes
+        changed_use=yes
+
+    - name: "Discover whether perl was updated"
+      shell: if [ "$(grep -P 'Compiling/Merging.*dev-lang/perl-' /var/log/emerge.log)" == "" ]; then echo 1; else echo 0; fi
+      register: perl_updated
+ 
+    - name: "Discover whether python was updated"
+      shell: if [ "$(grep -P 'Compiling/Merging.*dev-lang/python-' /var/log/emerge.log)" == "" ]; then echo 1; else echo 0; fi
+      register: python_updated
+
+    - name: "Discover whether grub was updated"
+      shell: if [ "$(grep -P 'Compiling/Merging.*sys-boot/grub-' /var/log/emerge.log)" == "" ]; then echo 1; else echo 0; fi
+      register: grub_updated
+
+    - name: "Discover whether kernel was updated"
+      shell: if [ "$(grep -P 'Compiling/Merging.*sys-kernel/gentoo-sources-' /var/log/emerge.log)" == "" ]; then echo 1; else echo 0; fi
+      register: kernel_updated
+
+    - name: "Run perl-cleaner"
+      shell: perl-cleaner --all
+      when: perl_updated.stdout == "0"
+
+    - name: "Run python-updater"
+      shell: python-updater
+      when: python_updated.stdout == "0"
+
+    - include: kernel.yaml
+      when: kernel_updated.stdout == "0"
+
+    - name: "Install system tools"
+      portage:
+        package={{ item }}
+        update=yes
+        changed_use=yes
+      with_items:
+        - app-admin/syslog-ng
+        - app-portage/eix
+        - sys-process/vixie-cron
+        - app-admin/logrotate
+        - net-misc/ntp
+        - sys-apps/haveged
+        - app-text/tree
+        - app-misc/screen
+        - sys-libs/gpm
+        - sys-process/lsof
+        - sys-apps/pciutils
+        - net-analyzer/tcpdump
+        - app-emulation/cloud-init
+        - dev-lang/ruby
+        - dev-ruby/rubygems
+        - app-admin/puppet-lint
+        - app-editors/hexedit
+        - app-misc/detachtty
+        - app-misc/rlwrap
+        - dev-util/strace
+        - net-analyzer/nmap
+        - net-analyzer/traceroute
+        - net-ftp/lftp
+        - sys-kernel/genkernel-next
+        - www-client/links
+        - www-client/lynx
+        - app-emulation/docker
+        - app-emulation/qemu
+        - net-dns/bind-tools
+        - dev-db/mysql
+        - app-misc/mc
+
+    - name: "Discover whether any packages were updated"
+      shell: if [ "$(grep -P 'Compiling/Merging' /var/log/emerge.log)" == "" ]; then echo 1; else echo 0; fi
+      register: anything_updated
+ 
+    - name: "Run revdep-rebuild"
+      shell: revdep-rebuild.sh
+      when: anything_updated.stdout == "0"
+
+    - name: "Run emerge --depclean"
+      shell: emerge --depclean
+      when: anything_updated.stdout == "0" and kernel_updated.stdout == "1"
+
+    - name: "Set python to 3.5"
+      shell: eselect python set python3.5
+
+    - name: "Set ruby to 2.3"
+      shell: eselect ruby set ruby23
+
+    - name: "Install grub"
+      shell: grub-install /dev/vda
+      when: grub_updated.stdout == "0"
+
+    - name: "Update grub.cfg"
+      shell: grub-mkconfig /boot/grub/grub.cfg
+      when: grub_updated.stdout == "0"
+
+    - name: "Delete etc-update files"
+      shell: find /etc/ -type f -iname '._cfg*' -print0 | xargs -0 rm -f
+      when: gcj.stat.exists == False
+
+    - name: "Update eix cache"
+      shell: eix-update
+      when: gcj.stat.exists == False
+
+    - name: "Configure rc.conf, hostname, sysctl"
+      template:
+        src=../templates/portage/{{ item.src }}
+        dest=/etc/{{ item.dest }}
+        mode=0644
+        owner=root
+        group=root
+        force=yes
+      with_items:
+        - { src: rc.conf.j2, dest: rc.conf }
+        - { src: hostname.j2, dest: conf.d/hostname }
+        - { src: sysctl.conf.j2, dest: sysctl.conf }
+
+    - name: "Reload sysctl"
+      shell: sysctl -p
+
+    - name: "Enable service"
+      service:
+        name={{ item.name }}
+        enabled=yes
+        runlevel={{ item.runlevel }}
+      with_items:
+        - { name: syslog-ng, runlevel: default }
+        - { name: vixie-cron, runlevel: default }
+        - { name: consolefont, runlevel: boot }
+        - { name: ntp-client, runlevel: default }
+        - { name: ntpd, runlevel: default }
+        - { name: haveged, runlevel: default }
+        - { name: docker, runlevel: default }

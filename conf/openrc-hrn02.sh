@@ -1,0 +1,7 @@
+export OS_AUTH_URL='https://hrn-api.os.cloud.twc.net:5000/v2.0'
+export OS_TENANT_ID='fe4942cffe80475b8b8eba52b52122ec'
+export OS_TENANT_NAME='konstanski'
+export OS_USERNAME='e242100'
+export OS_PASSWORD='Harriet5'
+export OS_REGION_NAME='HRN02'
+export DNS_SERVERS='24.26.95.16 24.26.95.50 8.8.4.4'

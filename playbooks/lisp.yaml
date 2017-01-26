@@ -1,0 +1,36 @@
+---
+- name: "Lisp configuration"
+  hosts: target
+  tasks:
+    - name: "Install SBCL and packages"
+      portage:
+        package={{ item }}
+        update=yes
+        changed_use=yes
+      with_items:
+        - dev-lisp/sbcl
+        - dev-lisp/rsm-mod
+
+    - name: "Check for existence of quicklisp"
+      stat: path=/usr/local/bin/quicklisp.lisp
+      register: quicklisp
+
+    - name: "Copy quicklisp installer"
+      template:
+        src=../templates/lisp/{{ item.src }}
+        dest=/usr/local/bin/{{ item.dest }}
+        mode=0755
+        owner=root
+        group=root
+        force=no
+      with_items:
+        - { src: quicklisp.lisp.j2, dest: quicklisp.lisp }
+        - { src: quicklisp_install.sh.j2, dest: quicklisp_install.sh }
+      when: quicklisp.stat.exists == False
+
+    - name: "Install quicklisp"
+      shell: pushd {{ item.home }} >/dev/null; su - {{ item.user }} -c '/usr/local/bin/quicklisp_installer.sh'; popd >/dev/null
+      with_items:
+        - { user: ckonstanski, home: /home/ckonstanski }
+        - { user: root, home: /root }
+      when: quicklisp.stat.exists == False

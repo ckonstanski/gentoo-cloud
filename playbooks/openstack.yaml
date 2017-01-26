@@ -1,0 +1,23 @@
+---
+- name: "OpenStack configuration"
+  hosts: target
+  tasks:
+    - name: "Install openstack tools"
+      portage:
+        package={{ item }}
+        update=yes
+        changed_use=yes
+      with_items:
+        - dev-python/python-cinderclient
+        - dev-python/python-designateclient
+        - dev-python/python-glanceclient
+        - dev-python/python-heatclient
+        - dev-python/python-keystoneclient
+        - dev-python/python-neutronclient
+        - dev-python/python-novaclient
+        - dev-python/python-openstackclient
+        - dev-python/python-swiftclient
+        - dev-python/tox
+
+    - name: "Install j2cli"
+      shell: if [ "$(pip freeze | grep j2cli)" == "" ]; then pip install j2cli[yaml]; /usr/bin/python3.5 /usr/lib/python-exec/python3.5/emerge -1 dev-lang/python-exec; fi

@@ -1,0 +1,86 @@
+---
+- name: "Emacs configuration"
+  hosts: target
+  tasks:
+    - name: "Install emacs"
+      portage:
+        package={{ item }}
+        update=yes
+        changed_use=yes
+      with_items:
+        - app-editors/emacs
+        - app-admin/emacs-updater
+
+    - name: "Discover whether emacs was updated"
+      shell: if [ "$(grep -P 'Compiling/Merging.*app-editors/emacs-' /var/log/emerge.log)" == "" ]; then echo 1; else echo 0; fi
+      register: emacs_updated
+
+    - name: "Run emacs-updater"
+      shell: emacs-updater
+      when: emacs_updated.stdout == "0"
+
+    - name: "Install emacs packages"
+      portage:
+        package={{ item }}
+        update=yes
+        changed_use=yes
+      with_items:
+        - app-emacs/auto-complete
+        - app-emacs/autoconf-mode
+        - app-emacs/csharp-mode
+        - app-emacs/csv-mode
+        - app-emacs/ecb
+        - app-emacs/eselect-mode
+        - app-emacs/js2-mode
+        - app-emacs/lua-mode
+        - app-emacs/magit
+        - app-emacs/markdown-mode
+        - app-emacs/po-mode
+        - app-emacs/python-mode
+        - app-emacs/ruby-mode
+        - app-emacs/xslide
+        - app-emacs/yaml-mode
+        - dev-python/git-review
+        - dev-vcs/git-crypt
+        - dev-util/global
+        - gnome-base/gconf
+        - sys-devel/automake:1.11
+        - www-client/surfraw
+
+    - name: "Create emacs directories"
+      file:
+        path={{ item.home }}/{{ item.path }}
+        state=directory
+        mode=0755
+        owner={{ item.owner }}
+        group={{ item.group }}
+      with_items:
+        - { path: .emacs.d, home: /home/ckonstanski, owner: ckonstanski, group: ckonstanski }
+        - { path: .emacs.d, home: /root, owner: root, group: root }
+        - { path: .eshell, home: /home/ckonstanski, owner: ckonstanski, group: ckonstanski }
+        - { path: .eshell, home: /root, owner: root, group: root }
+        - { path: emacs-plugins, home: /home/ckonstanski, owner: ckonstanski, group: ckonstanski }
+        - { path: emacs_session_save, home: /home/ckonstanski, owner: ckonstanski, group: ckonstanski }
+
+    # - name: "Install packages from git"
+    #   git:
+    #     repo={{item.repo }}
+    #     dest=/home/ckonstanski/emacs-plugins/{{ item.dest }}
+    #     accept_hostkey=yes
+    #   with_items:
+    #     - { repo: "https://github.com/slime/slime", dest: "slime" }
+    #     - { repo: "https://github.com/redguardtoo/js-comint.git", dest: "js-comint" }
+    #     - { repo: "https://github.com/puppetlabs/puppet-syntax-emacs.git", dest: "puppet-syntax-emacs" }
+    #     - { repo: "git@github.com:ckonstanski/emacs-jabber.git", dest: "emacs-jabber" }
+  
+    - name: "Configure emacs"
+      template:
+        src=../templates/emacs/{{ item.src }}
+        dest={{ item.home }}/{{ item.dest }}
+        mode=0644
+        owner={{ item.owner }}
+        group={{ item.group }}
+      with_items:
+        - { src: emacs.j2, dest: .emacs, home: /home/ckonstanski, owner: ckonstanski, group: ckonstanski }
+        - { src: eshell_alias.j2, dest: .eshell/alias, home: /home/ckonstanski, owner: ckonstanski, group: ckonstanski }
+        - { src: eshell_alias.j2, dest: .eshell/alias, home: /root, owner: root, group: root }

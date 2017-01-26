@@ -1,0 +1,45 @@
+---
+- name: "Configure locale"
+  include: locale.yaml
+
+- name: "Configure portage"
+  include: portage.yaml
+
+- name: "Configure users"
+  include: users.yaml
+
+- name: "Mount volume"
+  include: mount.yaml
+
+- name: "Configure postfix"
+  include: postfix.yaml
+
+- name: "Configure ansible"
+  include: ansible.yaml
+
+- name: "Configure emacs"
+  include: emacs.yaml
+
+- name: "Configure lisp"
+  include: lisp.yaml
+
+- name: "Configure clojure"
+  include: clojure.yaml
+
+- name: "Configure emacs"
+  include: vim.yaml
+
+- name: "Configure openstack clients"
+  include: openstack.yaml
+
+- name: "Configure alpine"
+  include: alpine.yaml
+
+- name: "Configure vagrant"
+  include: vagrant.yaml
+
+- name: "Configure vdev: root tasks"
+  include: vdev_root.yaml
+
+- name: "Configure vdev: user tasks"
+  include: vdev_user.yaml

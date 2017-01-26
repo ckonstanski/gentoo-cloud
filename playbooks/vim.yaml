@@ -1,0 +1,20 @@
+---
+- name: "Vim configuration"
+  hosts: target
+  tasks:
+    - name: "Install app-editors/vim"
+      portage:
+        package="app-editors/vim"
+        update=yes
+        changed_use=yes
+
+    - name: "Configure .vimrc"
+      template:
+        src=../templates/vim/{{ item.src }}
+        dest={{ item.home }}/{{ item.dest }}
+        mode=0644
+        owner={{ item.owner }}
+        group={{ item.group }}
+      with_items:
+        - { src: vimrc.j2, dest: .vimrc, home: /home/ckonstanski, owner: ckonstanski, group: ckonstanski }
+        - { src: vimrc.j2, dest: .vimrc, home: /root, owner: root, group: root }

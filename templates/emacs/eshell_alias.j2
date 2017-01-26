@@ -1,0 +1,16 @@
+alias l ll $*
+alias ,, mm $*
+alias weather (w3m "http://weather.noaa.gov/pub/data/observations/metar/decoded/KPIH.TXT")
+alias cp cp -f $1 $2
+alias rm rm -f $*
+alias ll ls -l $*
+alias la ls -al $*
+alias less less -MI $*
+alias kbdrate kbdrate -r 30 -d 250 $*
+alias mymysqldump mysqldump --add-drop-table --add-locks --all --quick --lock-tables $*
+alias mymysqldumpall mysqldump --add-drop-table --add-locks --all --quick --lock-tables --all-databases $*
+alias wget wget -nH -C off -m -k -p --follow-ftp -t 1 $*
+alias vnc xtightvncviewer -encodings "tight hextile" $*
+alias ww cvs -q update -Pd
+alias mm ,, $*
+alias nn .. $*

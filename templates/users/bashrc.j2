@@ -1,0 +1,39 @@
+# .bashrc
+
+# Source global definitions
+if [ -f /etc/profile ]; then
+	. /etc/profile
+fi
+
+if [ -f /etc/bash/bashrc ]; then
+	. /etc/bash/bashrc
+fi
+
+if [ -f /usr/share/mc/mc.gentoo ]; then
+    . /usr/libexec/mc/mc.sh
+fi
+
+HISTCONTROL=erasedups
+HISTSIZE=10000
+export WWW_HOME=http://www.google.com
+export EDITOR=vim
+export VISUAL=vim
+export VIEWER=less
+export EMAIL='ckonstanski@pippiandcarlos.com'
+export NAME="Carlos Konstanski"
+export SMTPSERVER="mail.pippiandcarlos.com"
+export PS1="\u@\h:\w \\$ "
+export BREAK_CHARS="\"#'(),;\`\\|!?[]{}"
+export RUBYOPT=
+export SSLKEYLOGFILE="/home/ckonstanski/tmp/sslkeylogfile"
+export SOAPUI_HOME="/home/ckonstanski/soapui"
+
+shopt -s extglob
+
+alias sbcl="rlwrap -b \$BREAK_CHARS sbcl "
+alias rm='rm -f'
+alias cp='cp -f'
+alias ll='ls -l'
+alias la='ls -al'
+alias less='less -MI --shift=1'
+alias ssh='ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no'

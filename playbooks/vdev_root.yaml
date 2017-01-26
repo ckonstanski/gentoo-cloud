@@ -1,0 +1,42 @@
+---
+- name: "VDEV configuration: root"
+  hosts: target
+  tasks:
+    - name: "Configure hosts files"
+      copy:
+        src=/etc/{{ item }}
+        dest=/etc/{{ item }}
+        mode=0644
+        owner=root
+        group=root
+      with_items:
+        - hosts.east
+        - hosts.west
+
+    - name: "Ensure /etc/hosts is not a file"
+      stat: path=/etc/hosts
+      register: hosts
+
+    - name: "Delete /etc/hosts"
+      file:
+        src=/etc/hosts
+        dest=/etc/hosts
+        state=absent
+      when: hosts.stat.exists == True and hosts.stat.islnk == False
+
+    - name: "Create hosts symlink (default hosts.west)"
+      file:
+        src=/etc/hosts.west
+        dest=/etc/hosts
+        state=link
+        force=no
+
+    - name: "Work around gerrit sha1 problem"
+      copy:
+        src=/etc/ssh/{{ item }}
+        dest=/etc/ssh/{{ item }}
+        mode=0644
+        owner=root
+        group=root
+      with_items:
+        - ssh_config

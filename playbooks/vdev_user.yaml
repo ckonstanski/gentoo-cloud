@@ -1,0 +1,73 @@
+---
+- name: "VDEV configuration: user"
+  hosts: target
+  become: True
+  become_user: ckonstanski
+  become_method: sudo
+  tasks:
+    - name: "Install vagrant plugins"
+      shell: vagrant plugin install vagrant-openstack-provider vagrant-vbox-snapshot vagrant-reload vagrant-host-shell; gem install librarian-puppet-simple
+
+    - name: "Create bootstrap directories"
+      file:
+        path=/home/ckonstanski/jobs/twc/{{ item }}
+        state=directory
+        mode=0755
+        owner=ckonstanski
+        group=ckonstanski
+      with_items:
+        - conf
+        - projects
+        - projects/keys
+
+    - name: "Install openrc files"
+      copy:
+        src=/home/ckonstanski/jobs/twc/conf/{{ item }}
+        dest=/home/ckonstanski/jobs/twc/conf/{{ item }}
+        mode=0644
+        owner=ckonstanski
+        group=ckonstanski
+      with_items:
+        - openrc-dev01-admin.sh
+        - openrc-dev01-showback.sh
+        - openrc-dev02-admin.sh
+        - openrc-dev02-showback.sh
+        - openrc-devstack-admin.sh
+        - openrc-devstack-demo.sh
+        - openrc-lab-e242100-bfd02-admin.sh
+        - openrc-lab-e242100-bfd02-konstanski.sh
+        - openrc-lab-e242100-hrn02-admin.sh
+        - openrc-lab-e242100-hrn02-konstanski.sh
+        - openrc-lab-showback-bfd02.sh
+        - openrc-prod-e242100-nce-konstanski.sh
+        - openrc-prod-e242100-nce.sh
+        - openrc-prod-e242100-nce-web-portals.sh
+        - openrc-prod-e242100-ncw-konstanski.sh
+        - openrc-prod-e242100-ncw.sh
+        - openrc-prod-showback-nce.sh
+        - openrc-prod-showback-ncw.sh
+        - openrc-staging-e242100-nce.sh
+        - openrc-staging-e242100-ncw.sh
+
+    - name: "Install git repos"
+      shell: pushd /home/ckonstanski/jobs/twc/projects 2>/dev/null; if [ ! -d {{ item.dest }} ]; then git clone {{item.repo }} {{ item.dest }}; fi; popd 2>/dev/null
+      with_items:
+        - { repo: "ssh://ckonstanski@bfd-gerrit.os.cloud.twc.net:29418/bootstrap.git", dest: "bootstrap-east" }
+        - { repo: "ssh://ckonstanski@bfd-gerrit.os.cloud.twc.net:29418/bootstrap.git", dest: "bootstrap-west" }
+        - { repo: "ssh://ckonstanski@bfd-gerrit.os.cloud.twc.net:29418/openstack-scripts.git", dest: "openstack-scripts" }
+        - { repo: "git@bfd-github.os.cloud.twc.net:jfdi/OpenStack-SSL.git", dest: "OpenStack-SSL" }
+        - { repo: "ssh://ckonstanski@bfd-gerrit.os.cloud.twc.net:29418/twc-manage.git", dest: "twc-manage" }
+        - { repo: "ssh://ckonstanski@bfd-gerrit.os.cloud.twc.net:29418/twc-devqa.git", dest: "twc-devqa" }
+
+    - name: "Install keys"
+      copy:
+        src=/home/ckonstanski/jobs/twc/projects/keys/{{ item }}
+        dest=/home/ckonstanski/jobs/twc/projects/keys/{{ item }}
+        mode=0644
+        owner=ckonstanski
+        group=ckonstanski
+      with_items:
+        - deploy_id_rsa
+        - konstanski_keypair.pem
+        - private_key.pkcs7.pem
+        - public_key.pkcs7.pem

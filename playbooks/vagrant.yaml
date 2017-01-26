@@ -1,0 +1,29 @@
+---
+- name: "Vagrant configuration"
+  hosts: target
+  tasks:
+    - name: "Install vagrant tarball"
+      copy:
+        src=/usr/portage/distfiles/{{ item }}
+        dest=/usr/portage/distfiles/{{ item }}
+        mode=0664
+        owner=portage
+        group=portage
+        force=no
+      with_items:
+        - vagrant_1.8.7_x86_64.deb
+
+    - name: "Install vagrant"
+      portage:
+        package={{ item }}
+        update=yes
+        changed_use=yes
+      with_items:
+        - app-emulation/vagrant-bin
+        - dev-ruby/mustache
+
+    - name: "Install vagrant gems"
+      shell: vagrant plugin install vagrant-vbox-snapshot vagrant-reload; gem install librarian-puppet-simple
+
+    - name: "Install vagrant-openstack-provider-0.7.2"
+      shell: vagrant plugin install vagrant-openstack-provider --plugin-version=0.7.2

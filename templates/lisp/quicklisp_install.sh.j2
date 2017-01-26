@@ -1,0 +1,4 @@
+{# j2 template file #}
+#!/bin/bash
+
+sbcl --eval '(progn (load "/usr/local/bin/quicklisp.lisp") (quicklisp-quickstart:install) (ql:add-to-init-file))'

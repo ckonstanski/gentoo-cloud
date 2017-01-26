@@ -1,0 +1,28 @@
+---
+- name: "Locale configuration"
+  hosts: target
+  tasks:
+    - name: "Configure locale.gen"
+      template:
+        src=../templates/locale/{{ item.src }}
+        dest=/etc/{{ item.dest }}
+        mode=0644
+        owner=root
+        group=root
+        force=yes
+      with_items:
+        - { src: locale.gen.j2, dest: locale.gen }
+        - { src: locale.conf.j2, dest: locale.conf }
+
+    - name: "Create 02locale symlink"
+      file:
+        src=/etc/locale.conf
+        dest=/etc/env.d/02locale
+        state=link
+        force=yes
+
+    - name: "Run locale-gen"
+      shell: locale-gen
+
+    - name: "Run env-update"
+      shell: env-update

@@ -1,0 +1,39 @@
+---
+- name: "Ansible configuration"
+  hosts: target
+  tasks:
+    - name: "Install ansible"
+      portage:
+        package={{ item }}
+        update=yes
+        changed_use=yes
+      with_items:
+        - app-admin/ansible
+
+    - name: "Create ansible log directory"
+      file:
+        path={{item }}
+        state=directory
+        mode=0755
+      with_items:
+        - /var/log/ansible
+
+    - name: "Create ansible config dir"
+      file:
+        path=/etc/ansible
+        state=directory
+        mode=0755
+        owner=root
+        group=root
+
+    - name: "Install ansible config files"
+      copy:
+        src=/etc/ansible/{{ item.src }}
+        dest=/etc/ansible/{{ item.dest }}
+        mode=0644
+        owner=root
+        group=root
+        force=no
+      with_items:
+        - { src: ansible.cfg, dest: ansible.cfg }
+        - { src: hosts, dest: hosts }

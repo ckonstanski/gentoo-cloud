@@ -1,0 +1,23 @@
+---
+- name: "Portage configuration"
+  hosts: target
+  tasks:
+    - name: "Create data filesystem"
+      filesystem:
+        fstype=ext4
+        dev=/dev/vdb
+
+    - name: "Create mount point"
+      file:
+        path=/home/ckonstanski/jobs
+        state=directory
+        mode=0755
+        owner=ckonstanski
+        group=ckonstanski
+
+    - name: "Mount data filesyytem"
+      mount:
+        name=/home/ckonstanski/jobs
+        src=/dev/vdb
+        fstype=ext4
+        state=present

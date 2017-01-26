@@ -1,0 +1,6 @@
+---
+- name: "Gather data from build node"
+  include: playbooks/install_localhost.yaml
+
+- name: "Perform tasks on VMs"
+  include: playbooks/install_gentoo.yaml

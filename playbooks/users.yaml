@@ -1,0 +1,72 @@
+---
+- name: "User configuration"
+  hosts: target
+  tasks:
+    - name: "Configure group: ckonstanski"
+      group:
+        name=ckonstanski
+        state=present
+
+    - name: "Configure user: ckonstanski"
+      user:
+        name=ckonstanski
+        shell=/bin/bash
+        group=ckonstanski
+        groups=wheel,audio,video,users,cron,crontab
+        home=/home/ckonstanski
+        state=present
+        
+    - name: "Copy bashrc"
+      template:
+        src=../templates/users/{{ item.src }}
+        dest={{ item.dest }}
+        mode=0644
+        owner={{ item.owner }}
+        group={{ item.group }}
+        force=yes
+      with_items:
+        - { src: bash_profile.j2, dest: /home/ckonstanski/.bash_profile, owner: ckonstanski, group: ckonstanski }
+        - { src: bash_profile.j2, dest: /root/.bash_profile, owner: root, group: root }
+        - { src: bashrc.j2, dest: /home/ckonstanski/.bashrc, owner: ckonstanski, group: ckonstanski }
+        - { src: bashrc.j2, dest: /root/.bashrc, owner: root, group: root }
+
+    - name: "Install SSH public files"
+      copy:
+        src={{ item.src }}
+        dest={{ item.dest }}
+        mode=0644
+        owner={{ item.owner }}
+        group={{ item.group }}
+      with_items:
+        - { src: /root/.ssh/id_rsa.pub, dest: /root/.ssh/id_rsa.pub, owner: root, group: root }
+        - { src: /root/.ssh/service_vm_key.id_rsa.pub, dest: /root/.ssh/service_vm_key.id_rsa.pub, owner: root, group: root }
+        - { src: /root/.ssh/config, dest: /root/.ssh/config, owner: root, group: root }
+        - { src: /root/.ssh/authorized_keys, dest: /root/.ssh/authorized_keys, owner: root, group: root }
+        - { src: /home/ckonstanski/.ssh/id_rsa.pub, dest: /home/ckonstanski/.ssh/id_rsa.pub, owner: ckonstanski, group: ckonstanski }
+        - { src: /home/ckonstanski/.ssh/service_vm_key.id_rsa.pub, dest: /home/ckonstanski/.ssh/service_vm_key.id_rsa.pub, owner: ckonstanski, group: ckonstanski }
+        - { src: /home/ckonstanski/.ssh/config, dest: /home/ckonstanski/.ssh/config, owner: ckonstanski, group: ckonstanski }
+        - { src: /home/ckonstanski/.ssh/authorized_keys, dest: /home/ckonstanski/.ssh/authorized_keys, owner: ckonstanski, group: ckonstanski }
+
+    - name: "Install SSH private files"
+      copy:
+        src={{ item.src }}
+        dest={{ item.dest }}
+        mode=0600
+        owner={{ item.owner }}
+        group={{ item.group }}
+        force=yes
+      with_items:
+        - { src: /root/.ssh/id_rsa, dest: /root/.ssh/id_rsa, owner: root, group: root }
+        - { src: /root/.ssh/service_vm_key.id_rsa, dest: /root/.ssh/service_vm_key.id_rsa, owner: root, group: root }
+        - { src: /home/ckonstanski/.ssh/id_rsa, dest: /home/ckonstanski/.ssh/id_rsa, owner: ckonstanski, group: ckonstanski }
+        - { src: /home/ckonstanski/.ssh/service_vm_key.id_rsa, dest: /home/ckonstanski/.ssh/service_vm_key.id_rsa, owner: ckonstanski, group: ckonstanski }
+
+    - name: "Grant sudo permissions"
+      copy:
+        src={{ item.src }}
+        dest={{ item.dest }}
+        mode=0600
+        owner={{ item.owner }}
+        group={{ item.group }}
+      with_items:
+        - { src: /etc/sudoers, dest: /etc/sudoers, owner: root, group: root }

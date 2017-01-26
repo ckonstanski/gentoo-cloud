@@ -1,0 +1,41 @@
+---
+- name: "Copy kernel and grub config files"
+  template:
+    src=../templates/kernel/{{ item.src }}
+    dest={{ item.dest }}
+    mode=0644
+    owner=root
+    group=root
+  with_items:
+    - { src: config, dest: /boot/config-ansible.initial }
+    - { src: grub, dest: /etc/default/grub }
+    - { src: modules, dest: /etc/conf.d/modules }
+
+- name: "Copy kernel build script"
+  template:
+    src=../templates/kernel/{{ item.src }}
+    dest={{ item.dest }}
+    mode=0755
+    owner=root
+    group=root
+  with_items:
+    - { src: buildit, dest: /usr/src/buildit }
+
+- name: "Set kernel to latest"
+  shell: eselect kernel set $(echo "linux-$(portageq best_version / sys-kernel/gentoo-sources | awk -F- '{print $4;}')-gentoo")
+
+- name: "determine whether running kernel is latest"
+  shell: if [ "$(eselect kernel list | grep -F '*' | awk '{print $2;}' | cut -c 7-)" == "$(uname -r)" ]; then echo "0"; else echo "1"; fi
+  register: kernel_latest
+
+- name: "Configure new kernel"
+  shell: pushd /usr/src/linux; if [ -f "/boot/config-ansible.latest" ]; then cp "/boot/config-ansible.latest" ".config"; else cp "/boot/config-ansible.initial" ".config"; fi; make olddefconfig; popd
+  when: kernel_latest.stdout == "1"
+
+- name: "Build new kernel"
+  shell: pushd /usr/src; ./buildit $(eselect kernel list | grep -F '*' | awk '{print $2;}' | cut -c 7-); popd
+  when: kernel_latest.stdout == "1"
+
+- name: "Reboot instance into new kernel"
+  include: reboot.yaml
+  when: kernel_latest.stdout == "1"

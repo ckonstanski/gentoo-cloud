@@ -1,0 +1,50 @@
+#!/usr/bin/env ansible-playbook
+---
+- name: Spin up a bare gentoo VM
+  hosts: localhost
+  vars:
+    username: "{{ lookup('env', 'OS_USERNAME') }}"
+    password: "{{ lookup('env', 'OS_PASSWORD') }}"
+    tenant_name: "{{ lookup('env', 'OS_TENANT_NAME') }}"
+    tenant_id: "{{ lookup('env', 'OS_TENANT_ID') }}"
+    endpoint: "{{ lookup('env', 'OS_AUTH_URL') }}"
+    region: "{{ lookup('env', 'OS_REGION_NAME') }}"
+    dns_servers: "{{ lookup('env', 'DNS_SERVERS') }}"
+    flavor_name: m4.2CPU.4GB
+    # flavor_name: m1.small
+    image_name: gentoo-openstack-amd64-default-20170104.qcow2
+    volume_size: 128
+    keypair_name: ckonstanski_at_sphinkpad
+    pubkey_path: /home/ckonstanski/.ssh/id_rsa.pub
+    router_prefix: default-router
+    private_network_prefix: default-network
+    private_network_cidr: 192.168.0.0/24
+    ext_network_name: Ext-Net
+    instance_name: gentoo
+  tasks:
+    - name: "Ensure image exists"
+      shell: "OS_USERNAME='{{ username }}' OS_PASSWORD='{{ password }}' OS_TENANT_NAME='{{ tenant_name }}' OS_AUTH_URL='{{ endpoint }}' OS_REGION_NAME='{{ region }}' {{ playbook_dir }}/files/image.sh '{{ image_name }}'"
+
+    - name: "Ensure flavor exists"
+      shell: "OS_USERNAME='{{ username }}' OS_PASSWORD='{{ password }}' OS_TENANT_NAME='{{ tenant_name }}' OS_AUTH_URL='{{ endpoint }}' OS_REGION_NAME='{{ region }}' {{ playbook_dir }}/files/flavor.sh '{{ flavor_name }}'"
+
+    - name: "Configure security groups"
+      shell: "OS_USERNAME='{{ username }}' OS_PASSWORD='{{ password }}' OS_TENANT_NAME='{{ tenant_name }}' OS_AUTH_URL='{{ endpoint }}' OS_REGION_NAME='{{ region }}' {{ playbook_dir }}/files/securitygroup.sh"
+
+    - name: "Configure networks"
+      shell: "OS_USERNAME='{{ username }}' OS_PASSWORD='{{ password }}' OS_TENANT_NAME='{{ tenant_name }}' OS_AUTH_URL='{{ endpoint }}' DNS_SERVERS='{{ dns_servers }}' OS_REGION_NAME='{{ region }}' {{ playbook_dir }}/files/network.sh '{{ router_prefix }}-{{ tenant_name }}' '{{ private_network_prefix }}-{{ tenant_name }}' '{{ private_network_cidr }}' '{{ ext_network_name }}'"
+      register: network_id
+
+    - name: "Configure SSH keypair"
+      shell: "OS_USERNAME='{{ username }}' OS_PASSWORD='{{ password }}' OS_TENANT_NAME='{{ tenant_name }}' OS_AUTH_URL='{{ endpoint }}' OS_REGION_NAME='{{ region }}' {{ playbook_dir }}/files/keypair.sh '{{ keypair_name }}' '{{ pubkey_path }}'"
+
+    - name: "Customize cloud.cfg"
+      shell: "OS_REGION_NAME='{{ region }}' DNS_SERVERS='{{ dns_servers }}' {{ playbook_dir }}/files/cloud.sh"
+
+    - name: "Spin up instance"
+      shell: "OS_USERNAME='{{ username }}' OS_PASSWORD='{{ password }}' OS_TENANT_NAME='{{ tenant_name }}' OS_AUTH_URL='{{ endpoint }}' OS_REGION_NAME='{{ region }}' {{ playbook_dir }}/files/instance.sh '{{ flavor_name }}' '{{ image_name }}' '{{ network_id.stdout }}' '{{ keypair_name }}' '{{ instance_name }}' '{{ region }}' '{{ volume_size }}'"
+      register: ip_name
+
+    - name: "Configure DNS in OpenStack"
+      shell: "OS_USERNAME='{{ username }}' OS_PASSWORD='{{ password }}' OS_TENANT_NAME='{{ tenant_name }}' OS_AUTH_URL='{{ endpoint }}' OS_PROJECT_NAME='{{ tenant_name }}' OS_REGION_NAME='{{ region }}' DNS_SERVERS='{{ dns_servers }}' OS_TENANT_ID='{{ tenant_id }}' {{ playbook_dir }}/files/dns.sh '{{ ip_name.stdout_lines[1] }}' '{{ ip_name.stdout_lines[0] }}'"
+      register: dns_fqdn

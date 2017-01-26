@@ -1,0 +1,41 @@
+---
+- name: "Postfix configuration"
+  hosts: target
+  tasks:
+    - name: "Install postfix"
+      portage:
+        package={{ item }}
+        update=yes
+        changed_use=yes
+      with_items:
+        - mail-mta/postfix
+
+    - name: "Copy postfix config"
+      template:
+        src=../templates/postfix/{{ item.src }}
+        dest={{ item.dest }}
+        mode=0644
+        owner={{ item.owner }}
+        group={{ item.group }}
+        force=yes
+      with_items:
+        - { src: main.cf.j2, dest: /etc/postfix/main.cf, owner: root, group: root }
+
+    - name: "Copy saslpass file"
+      copy:
+        src={{ item.src }}
+        dest={{ item.dest }}
+        mode=0600
+        owner={{ item.owner }}
+        group={{ item.group }}
+        force=yes
+      with_items:
+        - { src: /etc/postfix/saslpass, dest: /etc/postfix/saslpass, owner: root, group: root }
+
+    - name: "Enable service"
+      service:
+        name={{ item.name }}
+        enabled=yes
+        runlevel={{ item.runlevel }}
+      with_items:
+        - { name: postfix, runlevel: default }

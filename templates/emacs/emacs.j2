@@ -1,0 +1,824 @@
+(require 'smtpmail)
+
+(require 'package)
+(add-to-list 'package-archives '("marmalade" . "http://marmalade-repo.org/packages/"))
+(add-to-list 'package-archives '("melpa" . "http://melpa.milkbox.net/packages/") t)
+(package-initialize)
+;; (require 'flymake-ruby)
+;; (add-hook 'ruby-mode-hook 'flymake-ruby-load)
+;; (setq ruby-deep-indent-paren nil)
+;; (global-set-key (kbd "C-c r r") 'inf-ruby)
+;; (global-set-key (kbd "C-c r a") 'rvm-activate-corresponding-ruby)
+;; (require 'robe)
+;; (add-hook 'ruby-mode-hook 'robe-mode)
+;; (defadvice inf-ruby-console-auto (before activate-rvm-for-robe activate)
+;; (rvm-activate-corresponding-ruby))
+
+;; SLIME
+(add-to-list 'load-path "/home/ckonstanski/emacs-plugins/slime")
+(add-to-list 'load-path "/home/ckonstanski/emacs-plugins/slime/contrib")
+(autoload 'slime-highlight-edits-mode "slime-highlight-edits")
+(require 'slime-autoloads)
+(eval-after-load 'slime (slime-setup '(slime-fancy slime-banner slime-fuzzy slime-sbcl-exts slime-compiler-notes-tree slime-fancy-inspector)))
+(setq inferior-lisp-program "/usr/bin/sbcl --dynamic-space-size 2048")
+(setq slime-net-coding-system 'utf-8-unix)
+
+;; emacs-jabber
+(add-to-list 'load-path "/home/ckonstanski/emacs-plugins/emacs-jabber")
+(load "jabber-autoloads")
+
+(require 'helm)
+(require 'helm-config)
+(require 'helm-tags)
+(require 'helm-eshell)
+
+(add-hook 'eshell-mode-hook (lambda ()
+                              (define-key eshell-mode-map (kbd "C-c C-l")  'helm-eshell-history)))
+
+;; The default "C-x c" is quite close to "C-x C-c", which quits Emacs.
+;; Changed to "C-c h". Note: We must set "C-c h" globally, because we
+;; cannot change `helm-command-prefix-key' once `helm-config' is loaded.
+(global-set-key (kbd "C-x b") 'helm-mini)
+(global-set-key (kbd "C-x C-f") 'helm-find-files)
+(global-set-key (kbd "C-c h") 'helm-command-prefix)
+(global-set-key (kbd "M-x") 'helm-M-x)
+(global-set-key (kbd "M-y") 'helm-show-kill-ring)
+(global-set-key (kbd "C-h SPC") 'helm-all-mark-rings)
+(global-unset-key (kbd "C-x c"))
+
+(define-key helm-map (kbd "<tab>") 'helm-execute-persistent-action) ; rebind tab to run persistent action
+(define-key helm-map (kbd "C-i") 'helm-execute-persistent-action) ; make TAB work in terminal
+(define-key helm-map (kbd "C-z")  'helm-select-action) ; list actions using C-z
+(define-key shell-mode-map (kbd "C-c C-l") 'helm-comint-input-ring)
+
+(when (executable-find "curl")
+  (setq helm-google-suggest-use-curl-p t))
+
+;; (setq helm-split-window-in-side-p           t ; open helm buffer inside current window, not occupy whole other window
+;;       helm-move-to-line-cycle-in-source     t ; move to end or beginning of source when reaching top or bottom of source.
+;;       helm-ff-search-library-in-sexp        t ; search for library in `require' and `declare-function' sexp.
+;;       helm-scroll-amount                    8 ; scroll 8 lines other window using M-<next>/M-<prior>
+;;       helm-ff-file-name-history-use-recentf t)
+
+(loop for hook-name in '(dired-mode-hook
+                         eshell-mode-hook
+                         c-mode-hook
+                         c++-mode-hook
+                         asm-mode-hook) do
+     (add-hook hook-name 'helm-gtags-mode))
+
+(setq helm-gtags-ignore-case t
+      helm-gtags-auto-update t
+      helm-gtags-use-input-at-cursor t
+      helm-gtags-pulse-at-cursor t
+      helm-gtags-prefix-key "\C-cg"
+      helm-gtags-suggested-key-mapping t)
+
+(require 'helm-gtags)
+
+(define-key helm-gtags-mode-map (kbd "C-c g a") 'helm-gtags-tags-in-this-function)
+(define-key helm-gtags-mode-map (kbd "C-j") 'helm-gtags-select)
+(define-key helm-gtags-mode-map (kbd "M-.") 'helm-gtags-dwim)
+(define-key helm-gtags-mode-map (kbd "M-,") 'helm-gtags-pop-stack)
+(define-key helm-gtags-mode-map (kbd "C-c <") 'helm-gtags-previous-history)
+(define-key helm-gtags-mode-map (kbd "C-c >") 'helm-gtags-next-history)
+
+(helm-mode 1)
+
+(require 'cc-mode)
+;; (global-semanticdb-minor-mode 1)
+;; (global-semantic-idle-scheduler-mode 1)
+;; (semantic-mode 1)
+
+;; (add-hook 'speedbar-load-hook
+;;           (lambda () (require 'semantic-sb)))
+
+;; JDEE
+;; (add-to-list 'load-path "/home/ckonstanski/emacs-plugins/jdee/dist/jdee-2.4.2/lisp")
+;; (require 'jde)
+
+;; Save SQL history
+(defun my-sql-save-history-hook ()
+  (let ((lval 'sql-input-ring-file-name)
+        (rval 'sql-product))
+    (if (symbol-value rval)
+        (let ((filename 
+               (concat "~/.emacs.d/sql/"
+                       (symbol-name (symbol-value rval))
+                       "-history.sql")))
+          (set (make-local-variable lval) filename))
+        (error
+         (format "SQL history will not be saved because %s is nil"
+                 (symbol-name rval))))))
+(add-hook 'sql-interactive-mode-hook 'my-sql-save-history-hook)
+
+;; (require 'mailcrypt-init)
+(autoload 'multi-mode "multi-mode" "Allowing multiple major modes in a buffer." t)
+(autoload 'css-mode "css-mode")
+(setq semantic-load-turn-everything-on t)
+;;(semantic-load-enable-code-helpers)
+(setq visible-bell t)
+
+;; Uncomment if you want to use `xslide-process' in `xml-mode'.
+(autoload 'xsl-process "xslide-process" "Process an XSL stylesheet." t)
+(add-hook 'xml-mode-hook
+          (lambda()
+            (define-key xml-mode-map [(control c) (meta control p)] 'xsl-process)))
+
+;; Turn on font lock when in XSL mode
+(add-hook 'xsl-mode-hook 'turn-on-font-lock)
+
+;; auto-complete
+(require 'auto-complete-config)
+(ac-config-default)
+
+(add-to-list 'load-path "/home/ckonstanski/emacs-plugins/js-comint")
+(require 'js-comint)
+(setq inferior-js-program-command "iojs --es_staging --interactive")
+(setenv "NODE_NO_READLINE" "1")
+(add-hook 'js-mode-hook '(lambda ()
+                          (local-set-key "\C-x\C-e" 'js-send-last-sexp)
+                          (local-set-key "\C-\M-x" 'js-send-last-sexp-and-go)
+                          (local-set-key "\C-cb" 'js-send-buffer)
+                          (local-set-key "\C-c\C-b" 'js-send-buffer-and-go)
+                          (local-set-key "\C-cl" 'js-load-file-and-go)))
+
+(add-to-list 'load-path "/home/ckonstanski/emacs-plugins/puppet-syntax-emacs")
+(require 'puppet-mode)
+
+;; gerrit
+;; (require 'magit-gerrit)
+;; (setq-default magit-gerrit-ssh-creds "carlos.konstanski@twcable.com")
+
+
+(setq auto-mode-alist
+      (list
+       '("\\.txt" . text-mode)
+       '("pico\\.*" . text-mode)
+       '("\\.tex$" . tex-mode)
+       '("\\.tm$" . tex-mode)
+       '("\\.fo$" . xsl-mode)
+       '("\\.css$" . css-mode)
+       '("\\.xsl$" . xsl-mode)
+       '("\\.jsp*" . xsl-mode)
+       '("\\.htm*" . xsl-mode)
+       '("\\.tmpl" . xsl-mode)
+       '("\\.xml$" . xsl-mode)
+       '("\\.mxml$" . xsl-mode)
+       '("\\.wsd$" . xsl-mode)
+       '("\\.pdf$" . doc-view-mode)
+       '("\\.ps$" . doc-view-mode)
+       '("\\.cl$" . lisp-mode)
+       '("\\.clj$" . lisp-mode)
+       '("\\.cljs$" . lisp-mode)
+       '("\\.lsp$" . lisp-mode)
+       '("\\.lisp$" . lisp-mode)
+       '("\\.asd$" . lisp-mode)
+       '("\\.el$" . lisp-mode)
+       '("\\.emacs$" . lisp-mode)
+       '("\\.sbclrc$" . lisp-mode)
+       '("\\.vm$" . lisp-mode)
+       '("\\.wl$" . lisp-mode)
+       '("\\.js$" . js-mode)
+       '("\\.rb$" . ruby-mode)
+       '("\\.java$" . jde-mode)
+       '("\\.php$" . java-mode)
+       '("\\.as$" . java-mode)
+       '("\\.pp$" . puppet-mode)
+       '("\\.py$" . python-mode)
+       '("\\.yaml$" . yaml-mode)
+       '("\\.pl$" . perl-mode)
+       '("\\.ph$" . perl-mode)
+       '("\\.pm$" . perl-mode)
+       '("\\.c$" . c-mode)
+       '("\\.h$" . c-mode)
+       '("\\.hh$" . c++-mode)
+       '("\\.hpp$" . c++-mode)
+       '("\\.h++$" . c++-mode)
+       '("\\.cc$" . c++-mode)
+       '("\\.cpp$" . c++-mode)
+       '("\\.c++$" . c-mode)
+       '("Makefile" . makefile-mode)
+       '("\\.cs$" . csharp-mode)
+       '("\\.csv$" . csv-mode)
+       '("\\.sh$" . sh-mode)
+       '(".*rc$" . sh-mode)
+       '("\\.sql$" . sql-mode)
+       '("\\.pkb$" . sql-mode)
+       '("\\.pkh$" . sql-mode)
+       '("\\.vw$" . sql-mode)
+       '("\\.seq$" . sql-mode)
+       '("\\.m$" . octave-mode)
+       '("\\.ly$" . LilyPond-mode)
+       '("\\.mac$" . maxima-mode)
+       '("\\.dot$" . graphviz-dot-mode)
+       '("\\.md$" . markdown-mode)))
+
+(setq locale-coding-system 'utf-8)
+(set-terminal-coding-system 'utf-8)
+(set-keyboard-coding-system 'utf-8)
+(set-selection-coding-system 'utf-8)
+(prefer-coding-system 'utf-8)
+
+;; Uncomment if using abbreviations
+;;(abbrev-mode t)
+
+;; prevent semantic.cache from appearing in each directory when using Emacs Code Browser
+;; (setq semanticdb-default-save-directory "~/emacs_session_save")
+
+;; Mouse Scroll-wheel
+(defun sd-mousewheel-scroll-up (event)
+  "Scroll window under mouse up by 3 lines."
+  (interactive "e")
+  (let ((current-window (selected-window)))
+    (unwind-protect
+        (progn
+          (select-window (posn-window (event-start event)))
+          (scroll-up 5))
+      (select-window current-window))))
+(defun sd-mousewheel-scroll-down (event)
+  "Scroll window under mouse down by 5 lines."
+  (interactive "e")
+  (let ((current-window (selected-window)))
+    (unwind-protect
+        (progn
+          (select-window (posn-window (event-start event)))
+          (scroll-down 5))
+      (select-window current-window))))
+
+;; Turn on the mouse scroll-wheel events
+(global-set-key (kbd "<mouse-5>") 'sd-mousewheel-scroll-up)
+(global-set-key (kbd "<mouse-4>") 'sd-mousewheel-scroll-down)
+
+;; EShell Customizations
+'(eshell-scroll-show-maximum-output t)
+'(eshell-scroll-to-bottom-on-output t)
+
+(setq html-mode-hook
+      '(lambda ()
+         (define-key sgml-mode-map "\C-c\C-q"  'jsp-indent-java)
+         (define-key sgml-mode-map (kbd "TAB") 'tab-to-tab-stop)))
+
+;; (defun jde-import-fixit ()
+;;   "Combines jde-import-all, jde-import-kill-extra-imports and
+;; jde-import-organize into one easy function call.  Emulates
+;; eclipse's CTRL-SHIFT-O."
+;;   (interactive)
+;;   (jde-import-all)
+;;   (jde-import-kill-extra-imports)
+;;   (jde-import-organize)
+;;   (save-buffer))
+
+;; Eshell stuff
+(when (fboundp 'eshell)
+  (defalias 'eshell/lo #'eshell/exit)
+  (defalias 'eshell/logout #'save-buffers-kill-emacs)
+  (defun eshell/clear ()
+    "\"Clear the screen,\" as it were."
+    (recenter 0))
+  (defun eshell/emacs (&rest args)
+    "Alias for emacsclient."
+    (if (null args)
+        (bury-buffer)
+      (mapcar #'find-file args)))
+  (defalias 'eshell/emacsclient #'eshell/emacs))
+
+;; fix indenting - we want 4 spaces, not 2
+(defun my-c-mode-common-hook ()
+  (c-set-offset 'substatement-open 0)
+  (setq c++-tab-always-indent t)
+  (setq c-basic-offset 4)
+  (setq c-indent-level 4)
+  (setq tab-stop-list '(4 8 12 16 20 24 28 32 36 40 44 48 52 56 60))
+  (setq tab-width 4)
+  (setq indent-tabs-mode nil))
+
+(add-hook 'c-mode-common-hook 'my-c-mode-common-hook)
+
+;; set key bindings
+;; (global-set-key (kbd "C-z") 'undo)
+(setq-default indent-tabs-mode nil)
+(setq default-tab-width 4)
+
+;; kbd macros
+;; A handy way to delete javadocs from a file.  My personal favorite.
+(fset 'delete-javadoc [?\C-s ?/ ?* ?* up right ?\C-  ?\C-s ?* ?/ right ?\C-w])
+
+;; Complete lisp (defclass) definitions once the slot names are filled in.
+;; If you have this:
+;;
+;; (defclass test ()
+;;   a
+;;   b
+;;   c
+;;
+;; It gets turned into this:
+;;
+;; (defclass test ()
+;;   (a :initarg :a
+;;      :initform nil
+;;      :accessor a)
+;;   (b :initarg :b
+;;      :initform nil
+;;      :accessor b)
+;;   (c :initarg :c
+;;      :initform nil
+;;      :accessor c)
+(fset 'defclass-complete
+   [right right ?\( ?\C-  ?\M-x ?m ?o ?v ?e ?- ?e ?n ?d ?- ?o ?f ?- ?l ?i ?n ?e return ?\M-w ?  ?: ?i ?n ?i ?t ?a ?r ?g ?  ?: ?\C-y return ?: ?i ?n ?i ?t ?f ?o ?r ?m ?  ?n ?i ?l return ?: ?a ?c ?c ?e ?s ?s ?o ?r ?  ?\C-y ?\) right])
+
+
+(require 'ecb)
+(ecb-layout-define "left-speedbar" left
+  "This function creates the following layout:
+   -------------------------------------------------------
+   |              |                                      |
+   |              |                                      |
+   |              |                                      |
+   |              |                                      |
+   |              |                                      |
+   |              |                                      |
+   |              |                                      |
+   |  Speedbar    |                 Edit                 |
+   |              |                                      |
+   |              |                                      |
+   |              |                                      |
+   |              |                                      |
+   |              |                                      |
+   |              |                                      |
+   |              |                                      |
+   |              |--------------------------------------|
+   |              |                                      |
+   |              |            Compilation               |
+   |              |                                      |
+   -------------------------------------------------------
+
+If you have not set a compilation-window in `ecb-compile-window-height' then
+the layout contains no persistent compilation window and the other windows get a
+little more place. This layout works best if it is contained in
+`ecb-show-sources-in-directories-buffer'!"
+  (ecb-set-speedbar-buffer)
+  (select-window (next-window)))
+
+(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(default ((t (:inherit nil :stipple nil :background "black" :foreground "white" :inverse-video nil :box nil :strike-through nil :overline nil :underline nil :slant normal :weight normal :height 200 :width normal :foundry "lispm" :family "fixed"))))
+ '(cursor ((t (:background "yellow"))))
+ '(ediff-current-diff-face-A ((((class color)) (:background "DarkGoldenrod4"))))
+ '(ediff-current-diff-face-B ((((class color)) (:background "DarkGoldenrod4"))))
+ '(ediff-even-diff-face-A ((((class color)) (:background "black"))))
+ '(fixed-pitch ((t (:family "lispm-fixed"))))
+ '(fringe ((((class color) (background dark)) (:background "grey15"))))
+ '(header-line ((((class color grayscale) (background dark)) (:inherit mode-line :background "grey25" :foreground "yellow" :box nil))))
+ '(highlight ((((class color) (background dark)) (:background "purple"))))
+ '(jde-db-active-breakpoint-face ((t (:background "royal blue" :foreground "white"))) t)
+ '(jde-java-font-lock-operator-face ((((class color)) (:foreground "white"))))
+ '(menu ((t (:stipple nil :background "black" :foreground "white" :inverse-video nil :box nil :strike-through nil :overline nil :underline nil :width normal))))
+ '(mode-line ((((type x w32 mac) (class color)) (:background "midnight blue" :foreground "white" :box (:line-width -1 :style released-button)))))
+ '(mouse ((t (:background "yellow"))))
+ '(region ((((class color) (background dark)) (:background "blue" :foreground "yellow"))))
+ '(scroll-bar ((t (:background "black"))))
+ '(semantic-highlight-edits-face ((((class color) (background dark)) (:background "gray20"))))
+ '(show-paren-match-face ((((class color)) (:background "goldenrod" :foreground "black"))) t)
+ '(speedbar-highlight-face ((((class color) (background dark)) (:background "purple"))))
+ '(tool-bar ((nil (:background "gray75" :foreground "black"))))
+ '(xref-keyword-face ((t (:foreground "cyan"))) t)
+ '(xref-list-default-face ((t (:foreground "cyan"))) t)
+ '(xref-list-pilot-face ((t (:foreground "cyan"))) t)
+ '(xref-list-symbol-face ((t (:foreground "cyan"))) t))
+
+(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(Buffer-menu-name-width 48)
+ '(Man-width 80)
+ '(TeX-printer-default "home")
+ '(ac-modes
+   (quote
+    (emacs-lisp-mode lisp-interaction-mode c-mode cc-mode c++-mode java-mode clojure-mode scala-mode scheme-mode ocaml-mode tuareg-mode perl-mode cperl-mode python-mode ruby-mode ecmascript-mode javascript-mode js-mode js2-mode php-mode css-mode makefile-mode sh-mode fortran-mode f90-mode ada-mode xml-mode sgml-mode sql-mode lisp-mode slime-mode)))
+ '(android-mode-avd "015458001901401E")
+ '(android-mode-sdk-dir "/opt/android-sdk-update-manager")
+ '(auto-compression-mode t nil (jka-compr))
+ '(auto-save-default nil)
+ '(bbdb-send-mail-style (quote wl))
+ '(blink-matching-paren t)
+ '(blink-matching-paren-on-screen t)
+ '(browse-url-browser-function (quote browse-url-chromium))
+ '(browse-url-firefox-new-window-is-tab t)
+ '(browse-url-generic-args nil)
+ '(browse-url-generic-program nil)
+ '(browse-url-mozilla-new-window-is-tab t)
+ '(browse-url-text-browser "w3m")
+ '(browse-url-xterm-program "uxterm")
+ '(bsh-jar
+   "/home/ckonstanski/jde/jdee/dist/jdee-2.4.2/java/lib/bsh.jar")
+ '(c-hanging-braces-alist (quote set-from-style))
+ '(c-label-minimum-indentation (quote set-from-style))
+ '(c-syntactic-indentation t)
+ '(c-tab-always-indent t)
+ '(case-fold-search t)
+ '(column-number-mode t)
+ '(compilation-ask-about-save nil)
+ '(compilation-scroll-output (quote first-error))
+ '(compose-mail-user-agent-warnings nil)
+ '(confirm-kill-emacs (quote y-or-n-p))
+ '(current-language-environment "UTF-8")
+ '(custom-buffer-indent 4)
+ '(cvs-add-default-message "\"\"")
+ '(cvs-allow-dir-commit t)
+ '(cvs-dired-use-hook nil)
+ '(cvs-reuse-cvs-buffer (quote always))
+ '(delete-exited-processes nil)
+ '(desktop-files-not-to-save "^$")
+ '(desktop-load-locked-desktop t)
+ '(desktop-missing-file-warning nil)
+ '(desktop-save t)
+ '(desktop-save-mode t nil (desktop))
+ '(display-buffer-alist
+   (quote
+    (("*Buffer*" display-buffer-same-window
+      (allow-no-window . t)))))
+ '(display-buffer-reuse-frames t)
+ '(display-time-24hr-format t)
+ '(display-time-day-and-date t)
+ '(display-time-interval 1)
+ '(display-time-mode t nil (time))
+ '(display-time-world-time-format "%Y-%m-%d %H:%M:%S")
+ '(ecb-auto-activate nil)
+ '(ecb-compile-window-height 8)
+ '(ecb-compile-window-width (quote edit-window))
+ '(ecb-eshell-buffer-sync nil)
+ '(ecb-layout-name "left13")
+ '(ecb-options-version "2.41")
+ '(ecb-primary-secondary-mouse-buttons (quote mouse-1--mouse-2))
+ '(ecb-tip-of-the-day nil)
+ '(ecb-windows-height 0.25)
+ '(ecb-windows-width 0.25)
+ '(ediff-split-window-function (quote split-window-horizontally))
+ '(erc-autojoin-channels-alist
+   (quote
+    (("freenode.net" "#gentoo-virtualization" "#openstack-operators" "#gentoo-lisp" "#openstack-dev" "#openstack-cinder" "#openstack-glance"))))
+ '(erc-autojoin-domain-only nil)
+ '(erc-autojoin-timing (quote ident))
+ '(erc-hide-list (quote ("JOIN" "KICK" "NICK" "QUIT" "MODE")))
+ '(erc-modules
+   (quote
+    (autojoin button completion fill irccontrols list log match menu move-to-prompt netsplit networks noncommands readonly ring stamp track)))
+ '(erc-nick "ckonstanski")
+ '(erc-port 6667)
+ '(erc-prompt-for-password nil)
+ '(erc-server "chat.freenode.net")
+ '(eshell-buffer-maximum-lines 10000)
+ '(eshell-hist-ignoredups t)
+ '(eshell-history-size 10000)
+ '(eshell-kill-processes-on-exit t)
+ '(eshell-save-history-on-exit t)
+ '(eudc-query-form-attributes (quote (uid sn givenName mail)))
+ '(fortran-tab-mode-default t)
+ '(garak-alert-methods (quote (:notify)))
+ '(garak-alert-when (quote (:new :hidden :chat)))
+ '(gdb-all-registers t)
+ '(gdb-find-source-frame t)
+ '(gdb-many-windows nil)
+ '(gdb-same-frame nil)
+ '(gdb-show-main t)
+ '(gdb-use-separate-io-buffer t)
+ '(global-font-lock-mode t nil (font-lock))
+ '(global-hl-line-mode nil nil (hl-line))
+ '(gnus-agent nil)
+ '(gnus-gcc-self-resent-messages nil)
+ '(gnus-inhibit-startup-message t)
+ '(gnus-message-archive-group "INBOX.gesendet")
+ '(gnus-message-archive-method (quote (nnimap "mail.pippiandcarlos.com")))
+ '(grep-command "grep -nH -i ")
+ '(grep-find-command "find ~/ -type f -print0 | xargs -0 -e grep -nH -i ")
+ '(grep-find-template
+   "find . <X> -type f <F> -print0 | xargs -0 -e grep <C> -nH -i <R>")
+ '(grep-template "grep <C> -nH -i <R> <F>")
+ '(highlight-nonselected-windows t)
+ '(history-length t)
+ '(imenu-always-use-completion-buffer-p t t)
+ '(imenu-auto-rescan t)
+ '(imenu-max-item-length nil)
+ '(imenu-sort-function (quote imenu--sort-by-name))
+ '(indent-tabs-mode nil)
+ '(indicate-buffer-boundaries (quote left))
+ '(inhibit-startup-screen t)
+ '(jabber-account-list
+   (quote
+    (("1_86@chat.btf.hipchat.com"
+      (:password . "Neweboy2")
+      (:network-server . "hipchat.os.cloud.twc.net")
+      (:port . 5223)
+      (:connection-type . ssl)))))
+ '(jabber-alert-info-message-hooks (quote (jabber-info-libnotify jabber-info-echo)))
+ '(jabber-alert-message-hooks
+   (quote
+    (jabber-message-libnotify jabber-message-echo jabber-message-scroll)))
+ '(jabber-alert-muc-hooks
+   (quote
+    (jabber-muc-libnotify jabber-muc-display-personal jabber-muc-echo jabber-muc-scroll)))
+ '(jabber-alert-presence-hooks nil)
+ '(jabber-auto-reconnect t)
+ '(jabber-autoaway-timeout 10)
+ '(jabber-backlog-days nil)
+ '(jabber-backlog-number 1000)
+ '(jabber-chatstates-confirm nil)
+ '(jabber-display-menu t)
+ '(jabber-groupchat-buffer-format "%b")
+ '(jabber-groupchat-prompt-format "[%t] %n> ")
+ '(jabber-history-enable-rotation t)
+ '(jabber-history-enabled t)
+ '(jabber-history-muc-enabled t)
+ '(jabber-history-size-limit 10240)
+ '(jabber-invalid-certificate-servers (quote ("hipchat.os.cloud.twc.net")))
+ '(jabber-message-alert-same-buffer nil)
+ '(jabber-mode-line-compact nil)
+ '(jabber-muc-display-enter-leave-announcements nil)
+ '(jabber-muc-print-names-format "	%n	%a
+")
+ '(jabber-use-global-history nil)
+ '(jde-ant-complete-target t)
+ '(jde-ant-enable-find t)
+ '(jde-ant-home "/usr/share/ant-core")
+ '(jde-ant-invocation-method (quote ("Java")))
+ '(jde-ant-program "/usr/bin/ant")
+ '(jde-ant-read-target t)
+ '(jde-ant-use-global-classpath nil)
+ '(jde-build-function (quote (jde-ant-build)))
+ '(jde-compile-enable-kill-buffer t)
+ '(jde-compile-option-source (quote ("1.6")))
+ '(jde-db-active-breakpoint-face-colors (quote ("white" . "SpringGreen4")))
+ '(jde-db-initial-step-p nil)
+ '(jde-db-requested-breakpoint-face-colors (quote ("white" . "brown4")))
+ '(jde-db-spec-breakpoint-face-colors (quote ("white" . "blue violet")))
+ '(jde-electric-return-p nil)
+ '(jde-gen-comments nil)
+ '(jde-gen-conditional-padding-1 "")
+ '(jde-gen-conditional-padding-3 " ")
+ '(jde-gen-equals-trailing-and-operators t)
+ '(jde-gen-final-arguments nil)
+ '(jde-gen-final-methods nil)
+ '(jde-gen-k&r t)
+ '(jde-gen-method-javadoc-comment "inherit")
+ '(jde-imenu-include-modifiers t)
+ '(jde-imenu-sort (quote asc))
+ '(jde-import-sorted-groups (quote desc))
+ '(jde-javadoc-author-tag-template "\"* @author \" user-full-name \"\"")
+ '(jde-javadoc-check-undeclared-exception-flag t)
+ '(jde-javadoc-checker-level (quote private))
+ '(jde-javadoc-exception-tag-template
+   "\"* @exception \" (jde-javadoc-a type) \" if an exception occurs.\"")
+ '(jde-javadoc-gen-args (quote ("-subpackages")))
+ '(jde-javadoc-gen-author nil)
+ '(jde-javadoc-gen-destination-directory "doc")
+ '(jde-javadoc-gen-detail-switch (quote ("-private")))
+ '(jde-javadoc-gen-split-index t)
+ '(jde-javadoc-gen-verbose t)
+ '(jde-javadoc-gen-version nil)
+ '(jde-javadoc-version-tag-template nil)
+ '(jde-newline-function (quote (align-newline-and-indent)))
+ '(jde-project-context-switching-enabled-p t)
+ '(jde-wiz-get-javadoc-template nil)
+ '(jde-wiz-get-set-variable-prefix "")
+ '(jde-wiz-include-javadoc t)
+ '(jde-wiz-set-javadoc-template
+   (quote
+    ("/**" "* Sets the value of %n" "* @param %p Value to assign to this.%n" "*/")))
+ '(jde-wiz-show-report nil)
+ '(jde-xref-cache-size 6)
+ '(ldap-default-base "dc=pippiandcarlos,dc=com")
+ '(ldap-default-host "ldap.pippiandcarlos.com")
+ '(ldap-default-port 636)
+ '(ldap-host-parameters-alist
+   (quote
+    (("ldap.pippiandcarlos.com" base "ou=people,dc=pippiandcarlos,dc=com" binddn "cn=Carlos Konstanski,ou=people,dc=pippiandcarlos,dc=com" passwd "neweboy" auth simple scope subtree))))
+ '(lisp-tag-body-indentation 4)
+ '(lisp-tag-indentation 4)
+ '(mail-default-reply-to nil)
+ '(mail-signature nil)
+ '(mail-user-agent (quote sendmail-user-agent))
+ '(markdown-coding-system (quote utf-8))
+ '(markdown-command "markdown2")
+ '(maxima-input-history-length 10000)
+ '(maxima-save-input-history t)
+ '(maxima-use-full-color-in-process-buffer t)
+ '(message-send-mail-function (quote smtpmail-send-it))
+ '(message-signature-insert-empty-line nil)
+ '(minibuffer-electric-default-mode t nil (minibuf-eldef))
+ '(mm-external-terminal-program "uxterm")
+ '(mouse-autoselect-window nil)
+ '(nuke-trailing-whitespace-p t)
+ '(nxml-attribute-indent 8)
+ '(nxml-child-indent 4)
+ '(nxml-outline-child-indent 4)
+ '(nxml-slash-auto-complete-flag t)
+ '(parens-require-spaces nil)
+ '(perl-label-offset -2)
+ '(php-mode-speedbar-open nil)
+ '(pop-up-windows nil)
+ '(printer-name nil)
+ '(py-indent-offset 4)
+ '(python-indent-guess-indent-offset nil)
+ '(python-indent-offset 2)
+ '(python-mode-hook
+   (quote
+    (#[nil "\304\302!\210\305\304\303!\210\306\211\207"
+           [py-indent-tabs-mode indent-tabs-mode beginning-of-defun-function end-of-defun-function make-local-variable py-beginning-of-def-or-class py-end-of-def-or-class]
+           2]
+     (lambda nil
+       (load abbrev-file-name nil t))
+     py-set-ffap-form)) t)
+ '(require-final-newline t)
+ '(rng-nxml-auto-validate-flag nil)
+ '(ruby-indent-level 4)
+ '(safe-local-variable-values
+   (quote
+    ((Package . CL-FAD)
+     (Package ITERATE :use "COMMON-LISP" :colon-mode :external)
+     (syntax . COMMON-LISP)
+     (Package . DRAKMA)
+     (package . puri)
+     (Package . odbc)
+     (Package . CHUNGA)
+     (Package . FLEXI-STREAMS)
+     (Package . HTML-TEMPLATE)
+     (Package . HUNCHENTOOT)
+     (Package . CL-USER)
+     (Package . CL-WHO)
+     (Syntax . Common-lisp)
+     (Lowercase . Yes)
+     (Package . XLIB)
+     (Lowercase . YES)
+     (Syntax . Common-Lisp)
+     (Package . Memoization)
+     (Syntax . COMMON-LISP)
+     (Package . CL-PPCRE)
+     (Syntax . ANSI-Common-Lisp)
+     (Base . 10)
+     (Package . UFFI))))
+ '(save-place t nil (saveplace))
+ '(scroll-conservatively 1000000)
+ '(search-upper-case t)
+ '(semantic-format-use-images-flag nil)
+ '(semantic-imenu-auto-rebuild-directory-indexes t)
+ '(semantic-imenu-index-directory t)
+ '(semantic-stickyfunc-indent-string "  ")
+ '(semantic-which-function-use-color t)
+ '(send-mail-function (quote smtpmail-send-it))
+ '(server-window (quote pop-to-buffer))
+ '(sgml-slash-distance nil)
+ '(show-paren-mode t nil (paren))
+ '(show-paren-style (quote mixed))
+ '(size-indication-mode t)
+ '(slime-autodoc-mode t t)
+ '(slime-autodoc-use-multiline-p t)
+ '(slime-compilation-finished-hook (quote (slime-maybe-show-xrefs-for-notes)))
+ '(slime-complete-symbol*-fancy t)
+ '(slime-complete-symbol-function (quote slime-complete-symbol*))
+ '(slime-ed-use-dedicated-frame nil)
+ '(slime-kill-without-query-p t)
+ '(slime-multiprocessing t)
+ '(slime-repl-history-remove-duplicates t)
+ '(slime-repl-history-size 10000)
+ '(slime-repl-return-behaviour :send-only-if-after-complete)
+ '(slime-startup-animation nil)
+ '(slime-truncate-lines nil)
+ '(smtpmail-debug-info nil)
+ '(smtpmail-smtp-server "localhost")
+ '(smtpmail-smtp-service 1025)
+ '(special-display-regexps
+   (quote
+    (("jabber-groupchat"
+      (tool-bar-lines . 0)
+      (menu-bar-lines . 0)
+      (font . "-schumacher-clean-medium-r-*-*-*-120-*-*-*-70-*-*"))
+     ("jabber-chat"
+      (tool-bar-lines . 0)
+      (menu-bar-lines . 0)
+      (font . "-schumacher-clean-medium-r-*-*-*-120-*-*-*-70-*-*")))))
+ '(speedbar-directory-unshown-regexp "^\\(CVS\\|RCS\\|SCCS\\)\\'")
+ '(speedbar-hide-button-brackets-flag nil)
+ '(speedbar-indentation-width 2)
+ '(speedbar-query-confirmation-method (quote none-but-delete))
+ '(speedbar-show-unknown-files t)
+ '(speedbar-track-mouse-flag t)
+ '(speedbar-update-flag t)
+ '(speedbar-use-images nil)
+ '(speedbar-use-imenu-flag t)
+ '(sql-electric-stuff (quote go))
+ '(sql-ingres-login-params (quote (database)))
+ '(sql-input-ring-file-name "~/.sql_history")
+ '(sql-ms-login-params (quote (user password server)))
+ '(sql-ms-options nil)
+ '(sql-ms-program "tsql")
+ '(sql-product (quote postgres))
+ '(sql-send-terminator t)
+ '(sql-sybase-login-params (quote (user password server)))
+ '(sql-sybase-options (quote ("-3")))
+ '(tab-always-indent t)
+ '(tab-stop-list
+   (quote
+    (4 8 12 16 20 24 28 32 36 40 44 48 52 56 60 64 68 72 76 80 84 88 92 96 100 104 108 112 116 120)))
+ '(tags-add-tables t)
+ '(tags-apropos-verbose t)
+ '(tags-file-name nil t)
+ '(tags-loop-revert-buffers t)
+ '(tags-revert-without-query t)
+ '(term-completion-addsuffix nil)
+ '(term-input-ignoredups t)
+ '(term-scroll-show-maximum-output t)
+ '(term-scroll-to-bottom-on-output t)
+ '(text-mode-hook (quote (turn-on-auto-fill text-mode-hook-identify)))
+ '(tool-bar-mode nil nil (tool-bar))
+ '(tramp-default-method "ssh")
+ '(tramp-default-proxies-alist
+   (quote
+    (("\\.cloud\\.twc\\.net\\'" "\\`root\\'" "/ssh:%h:"))))
+ '(tramp-encoding-shell "/bin/bash")
+ '(truncate-partial-width-windows nil)
+ '(uniquify-buffer-name-style (quote forward) nil (uniquify))
+ '(user-mail-address "ckonstanski@pippiandcarlos.com")
+ '(vc-command-messages t)
+ '(vc-suppress-confirm t)
+ '(viper-auto-indent t)
+ '(viper-delete-backwards-in-replace t)
+ '(viper-ex-style-editing nil)
+ '(viper-ex-style-motion nil)
+ '(viper-replace-region-start-delimiter "^")
+ '(viper-shift-width 4)
+ '(viper-want-ctl-h-help t)
+ '(vm-auto-get-new-mail 3600)
+ '(vm-expunge-before-quit t)
+ '(vm-tale-is-an-idiot t)
+ '(w3-auto-run-java t t)
+ '(w3-debug-html t)
+ '(w3-default-homepage "http://www.google.com/")
+ '(w3-display-frames t)
+ '(w3-do-scripting t)
+ '(w3-echo-link (quote (text title name)))
+ '(w3-icon-format nil)
+ '(w3-print-command "lpr")
+ '(w3-use-menus
+   (quote
+    (file edit view go bookmark options buffers style emacs nil help)))
+ '(w3-use-terminal-characters t)
+ '(w3m-coding-system (quote utf-8))
+ '(w3m-default-display-inline-images t)
+ '(w3m-file-coding-system (quote utf-8))
+ '(w3m-home-page "http://www.google.com/")
+ '(w3m-keep-cache-size 0)
+ '(w3m-use-cookies t)
+ '(which-function-mode nil nil (which-func))
+ '(whitespace-auto-cleanup t)
+ '(whitespace-check-indent-whitespace t)
+ '(whitespace-rescan-timer-time 30)
+ '(whitespace-silent t)
+ '(woman-locale "de_DE.UTF-8")
+ '(xref-class-tree-splits-window-horizontally t)
+ '(xref-class-tree-window-width 40)
+ '(xref-commentary-moving-level 6)
+ '(xref-completion-auto-focus t)
+ '(xref-completion-inserts-parenthesis t)
+ '(xref-completion-overload-wizard-deep 10)
+ '(xref-files-encoding (quote utf))
+ '(xref-java-completion-access-check t)
+ '(xref-java-completion-linkage-check t)
+ '(xref-max-completions 300)
+ '(xref-prefer-import-on-demand nil)
+ '(xref-save-files-and-update-tags-after-refactoring t)
+ '(xref-save-files-and-update-tags-before-refactoring t)
+ '(xref-version-control t)
+ '(xsl-element-indent-step 4))
+
+;; LDAP
+(require 'eudc)
+(eval-after-load 
+    "message"
+  '(define-key message-mode-map [(control ?c) (tab)] 'eudc-expand-inline))
+(eval-after-load
+    "sendmail"
+  '(define-key mail-mode-map [(control ?c) (tab)] 'eudc-expand-inline))
+
+;; Start the emacs server.  Allows you to be in an xterm or other
+;; shell, and type "emacsclient <filename>", which will open the file
+;; in your running emacs.  In addition, an alias has already been
+;; defined above, so you can type "emacs <filename>" if you are doing
+;; this in eshell (the alias isn't recognized outside eshell).
+;;
+;; One cool implication is that you can set your pine editor to
+;; "/usr/bin/emacsclient" to write your emails in emacs from pine.
+(server-start)
+
+(put 'downcase-region 'disabled nil)
+(put 'upcase-region 'disabled nil)
+
+;; desktop autosave
+;(desktop-read)
+;(desktop-load-default)
+(put 'set-goal-column 'disabled nil)
