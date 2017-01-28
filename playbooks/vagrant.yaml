@@ -21,9 +21,3 @@
       with_items:
         - app-emulation/vagrant-bin
         - dev-ruby/mustache
-
-    - name: "Install vagrant gems"
-      shell: vagrant plugin install vagrant-vbox-snapshot vagrant-reload; gem install librarian-puppet-simple
-
-    - name: "Install vagrant-openstack-provider-0.7.2"
-      shell: vagrant plugin install vagrant-openstack-provider --plugin-version=0.7.2
